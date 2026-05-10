@@ -8,22 +8,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
+from strategy_config_v1 import OPERATIONAL_STRATEGY as CFG
+
 ROOT = Path("/home/sami/quant-fx")
 DATA_PATH = ROOT / "live_data" / "eurusd-m15-live.csv"
 LEDGER_PATH = ROOT / "paper_trades.csv"
 RUN_LOG_PATH = ROOT / "paper_live_runner_log.csv"
 UPDATE_SCRIPT = ROOT / "live_data_update_v1.sh"
-
-PIP = 0.0001
-ROUND_TRIP_COST_PIPS = 1.2
-
-ASIA_END = 6
-ENTRY_HOURS = {8, 9}
-EXIT_HOUR = 14
-MIN_RANGE_PIPS = 12.0
-MAX_RANGE_PIPS = 30.0
-BUFFER_PIPS = 1.0
-TP_R = 2.0
 
 LEDGER_FIELDS = [
     "trade_id",
@@ -86,7 +77,7 @@ def parse_dt(value: str) -> datetime:
 
 
 def pips(value: float) -> float:
-    return value / PIP
+    return value / CFG.pip_size
 
 
 def run_update() -> None:
@@ -200,18 +191,18 @@ def evaluate_signal(candles: List[Candle]) -> Signal:
     latest = candles[-1]
     day = latest.ts.date()
 
-    if latest.ts.strftime("%A") == "Friday":
+    if CFG.skip_friday and latest.ts.strftime("%A") == "Friday":
         return Signal("SKIP_FRIDAY")
 
-    if latest.ts.month == 12:
+    if CFG.skip_december and latest.ts.month == 12:
         return Signal("SKIP_DECEMBER")
 
-    if latest.ts.hour not in ENTRY_HOURS:
+    if latest.ts.hour not in CFG.entry_hours:
         return Signal("OUTSIDE_WINDOW")
 
     today = [c for c in candles if c.ts.date() == day]
-    asia = [c for c in today if 0 <= c.ts.hour < ASIA_END]
-    entry_window = [c for c in today if c.ts.hour in ENTRY_HOURS]
+    asia = [c for c in today if CFG.asia_start_hour <= c.ts.hour < CFG.asia_end_hour]
+    entry_window = [c for c in today if c.ts.hour in CFG.entry_hours]
 
     if len(asia) < 16:
         return Signal("ASIA_RANGE_INCOMPLETE", notes=f"asia_candles={len(asia)}")
@@ -220,17 +211,17 @@ def evaluate_signal(candles: List[Candle]) -> Signal:
     asia_low = min(c.low for c in asia)
     asia_range = pips(asia_high - asia_low)
 
-    if not (MIN_RANGE_PIPS <= asia_range <= MAX_RANGE_PIPS):
+    if not (CFG.min_asia_range_pips <= asia_range <= CFG.max_asia_range_pips):
         return Signal("INVALID_ASIA_RANGE", notes=f"asia_range={asia_range:.2f}")
 
-    long_entry = asia_high + BUFFER_PIPS * PIP
-    short_entry = asia_low - BUFFER_PIPS * PIP
+    long_entry = asia_high + CFG.buffer_pips * CFG.pip_size
+    short_entry = asia_low - CFG.buffer_pips * CFG.pip_size
 
-    long_stop = asia_low - BUFFER_PIPS * PIP
-    short_stop = asia_high + BUFFER_PIPS * PIP
+    long_stop = asia_low - CFG.buffer_pips * CFG.pip_size
+    short_stop = asia_high + CFG.buffer_pips * CFG.pip_size
 
-    long_target = long_entry + TP_R * (long_entry - long_stop)
-    short_target = short_entry - TP_R * (short_stop - short_entry)
+    long_target = long_entry + CFG.target_r * (long_entry - long_stop)
+    short_target = short_entry - CFG.target_r * (short_stop - short_entry)
 
     long_triggered = any(c.high >= long_entry for c in entry_window)
     short_triggered = any(c.low <= short_entry for c in entry_window)
@@ -322,7 +313,7 @@ def resolve_open_trades(candles: List[Candle], rows: List[dict[str, str]]) -> bo
                 exit_time = candle.ts
                 break
 
-            if candle.ts.hour >= EXIT_HOUR:
+            if candle.ts.hour >= CFG.exit_hour:
                 exit_price = candle.close
                 exit_time = candle.ts
                 reason = "TIME_EXIT"
@@ -331,8 +322,12 @@ def resolve_open_trades(candles: List[Candle], rows: List[dict[str, str]]) -> bo
         if exit_price is None or exit_time is None:
             continue
 
-        gross_pips = (exit_price - entry) / PIP if side == "LONG" else (entry - exit_price) / PIP
-        net = gross_pips - ROUND_TRIP_COST_PIPS
+        gross_pips = (
+            (exit_price - entry) / CFG.pip_size
+            if side == "LONG"
+            else (entry - exit_price) / CFG.pip_size
+        )
+        net = gross_pips - CFG.round_trip_cost_pips
 
         trade["status"] = "CLOSED"
         trade["exit_time_utc"] = exit_time.isoformat()
@@ -362,6 +357,7 @@ def open_trade_if_needed(candles: List[Candle], rows: List[dict[str, str]], lot:
     signal = evaluate_signal(candles)
 
     print("=== Isaac Paper Live Runner V1 ===")
+    print(f"Strategy: {CFG.name}")
     print(f"Latest candle UTC: {latest.ts.isoformat()}")
     print(f"Latest close: {latest.close:.5f}")
     print(f"Signal: {signal.name}")
@@ -392,8 +388,8 @@ def open_trade_if_needed(candles: List[Candle], rows: List[dict[str, str]], lot:
 
     trade = {
         "trade_id": trade_id,
-        "strategy": "EURUSD_ASIA_BREAKOUT_V2",
-        "pair": "EUR/USD",
+        "strategy": CFG.name,
+        "pair": CFG.pair,
         "side": signal.side,
         "status": "OPEN",
         "entry_time_utc": latest.ts.isoformat(),
@@ -438,8 +434,8 @@ def main() -> None:
     if args.lot <= 0:
         raise SystemExit("Lot size must be positive.")
 
-    if args.lot > 0.05:
-        raise SystemExit("Paper lot capped at 0.05 by Isaac risk rule.")
+    if args.lot > CFG.max_paper_lot:
+        raise SystemExit(f"Paper lot capped at {CFG.max_paper_lot:.2f} by Isaac risk rule.")
 
     if not args.skip_update:
         run_update()

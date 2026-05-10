@@ -7,16 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
+from strategy_config_v1 import OPERATIONAL_STRATEGY as CFG
+
 DATA_PATH = Path("/home/sami/download/eurusd-m15-bid-2025-01-01-2026-01-01.csv")
 LEDGER = Path("/home/sami/quant-fx/paper_trades.csv")
-
-PIP = 0.0001
-ASIA_END = 6
-ENTRY_HOURS = {8, 9}
-MIN_RANGE_PIPS = 12.0
-MAX_RANGE_PIPS = 30.0
-BUFFER_PIPS = 1.0
-TP_R = 2.0
 
 FIELDS = [
     "trade_id", "strategy", "pair", "side", "status",
@@ -86,7 +80,7 @@ def next_trade_id(rows: List[dict[str, str]]) -> str:
 
 
 def pips(x: float) -> float:
-    return x / PIP
+    return x / CFG.pip_size
 
 
 def main() -> None:
@@ -94,6 +88,12 @@ def main() -> None:
     parser.add_argument("--at", required=True, help="UTC replay time, e.g. 2025-09-03T08:15:00Z")
     parser.add_argument("--lot", type=float, default=0.01)
     args = parser.parse_args()
+
+    if args.lot <= 0:
+        raise SystemExit("Lot size must be positive.")
+
+    if args.lot > CFG.max_paper_lot:
+        raise SystemExit(f"Paper lot capped at {CFG.max_paper_lot:.2f} by Isaac risk rule.")
 
     at = parse_at(args.at)
     candles = [c for c in load_candles() if c.ts <= at]
@@ -111,17 +111,21 @@ def main() -> None:
     if any(r["entry_time_utc"].startswith(day.isoformat()) for r in rows):
         raise SystemExit("Refusing: trade already recorded for this day.")
 
-    if latest.ts.strftime("%A") == "Friday":
+    if CFG.skip_friday and latest.ts.strftime("%A") == "Friday":
         print("NO TRADE: Friday filter.")
         return
 
-    if latest.ts.hour not in ENTRY_HOURS:
+    if CFG.skip_december and latest.ts.month == 12:
+        print("NO TRADE: December filter.")
+        return
+
+    if latest.ts.hour not in CFG.entry_hours:
         print("NO TRADE: outside entry window.")
         return
 
     today = [c for c in candles if c.ts.date() == day]
-    asia = [c for c in today if 0 <= c.ts.hour < ASIA_END]
-    entry_window = [c for c in today if c.ts.hour in ENTRY_HOURS]
+    asia = [c for c in today if CFG.asia_start_hour <= c.ts.hour < CFG.asia_end_hour]
+    entry_window = [c for c in today if c.ts.hour in CFG.entry_hours]
 
     if len(asia) < 16:
         print("NO TRADE: Asia range incomplete.")
@@ -131,18 +135,18 @@ def main() -> None:
     asia_low = min(c.low for c in asia)
     asia_range = pips(asia_high - asia_low)
 
-    if not (MIN_RANGE_PIPS <= asia_range <= MAX_RANGE_PIPS):
+    if not (CFG.min_asia_range_pips <= asia_range <= CFG.max_asia_range_pips):
         print(f"NO TRADE: invalid Asia range {asia_range:.2f} pips.")
         return
 
-    long_entry = asia_high + BUFFER_PIPS * PIP
-    short_entry = asia_low - BUFFER_PIPS * PIP
+    long_entry = asia_high + CFG.buffer_pips * CFG.pip_size
+    short_entry = asia_low - CFG.buffer_pips * CFG.pip_size
 
-    long_stop = asia_low - BUFFER_PIPS * PIP
-    short_stop = asia_high + BUFFER_PIPS * PIP
+    long_stop = asia_low - CFG.buffer_pips * CFG.pip_size
+    short_stop = asia_high + CFG.buffer_pips * CFG.pip_size
 
-    long_target = long_entry + TP_R * (long_entry - long_stop)
-    short_target = short_entry - TP_R * (short_stop - short_entry)
+    long_target = long_entry + CFG.target_r * (long_entry - long_stop)
+    short_target = short_entry - CFG.target_r * (short_stop - short_entry)
 
     long_triggered = any(c.high >= long_entry for c in entry_window)
     short_triggered = any(c.low <= short_entry for c in entry_window)
@@ -167,8 +171,8 @@ def main() -> None:
 
     trade = {
         "trade_id": next_trade_id(rows),
-        "strategy": "EURUSD_ASIA_BREAKOUT_V2",
-        "pair": "EUR/USD",
+        "strategy": CFG.name,
+        "pair": CFG.pair,
         "side": side,
         "status": "OPEN",
         "entry_time_utc": latest.ts.isoformat(),

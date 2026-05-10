@@ -81,6 +81,9 @@ def pips(value: float) -> float:
 
 
 def run_update() -> None:
+    if not UPDATE_SCRIPT.exists():
+        raise SystemExit(f"Missing update script: {UPDATE_SCRIPT}")
+
     subprocess.run([str(UPDATE_SCRIPT)], check=True)
 
 

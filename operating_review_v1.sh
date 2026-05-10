@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/home/sami/quant-fx"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$ROOT/runtime_logs"
 mkdir -p "$LOG_DIR"
 
@@ -18,6 +18,7 @@ LOG_FILE="$LOG_DIR/operating_review_$STAMP.log"
   python3 daily_report_v1.py
   ./ai_research_loop_v1.sh
   python3 weekly_paper_evidence_report_v1.py
+  python3 paper_vs_backtest_comparison_v1.py
   python3 deployment_gate_checklist_v1.py
 
   echo "OPERATING REVIEW STATUS: GREEN"

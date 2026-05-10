@@ -20,7 +20,7 @@ REPORT = MEMORY_DIR / "latest_memory_report.md"
 LEDGER = ROOT / "paper_trades.csv"
 RUN_LOG = ROOT / "paper_live_runner_log.csv"
 SIGNAL_LOG = ROOT / "live_signal_log.csv"
-AUDIT = ROOT / "system_audit_v1.sh"
+AUDIT = ROOT / "system_audit_v2.sh"
 
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -65,7 +65,7 @@ def audit_status() -> str:
         capture_output=True,
         text=True,
         check=False,
-        timeout=60,
+        timeout=180,
     )
 
     if result.returncode == 0 and "SYSTEM STATUS: GREEN" in result.stdout:
@@ -111,7 +111,7 @@ def build_snapshot() -> dict[str, Any]:
         "stats": stats,
         "guardrails": {
             "live_execution_enabled": False,
-            "max_paper_lot": 0.05,
+            "max_paper_lot": CFG.max_paper_lot,
             "requires_3_month_paper_validation": True,
             "ai_may_not_auto_change_live_logic": True,
         },

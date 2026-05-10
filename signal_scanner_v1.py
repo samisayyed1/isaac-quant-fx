@@ -6,16 +6,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
+from strategy_config_v1 import OPERATIONAL_STRATEGY as CFG
+
 DATA_PATH = Path("/home/sami/download/eurusd-m15-bid-2025-01-01-2026-01-01.csv")
-
-PIP = 0.0001
-
-ASIA_END = 6
-ENTRY_HOURS = {8, 9}
-MIN_RANGE_PIPS = 12.0
-MAX_RANGE_PIPS = 30.0
-BUFFER_PIPS = 1.0
-TP_R = 2.0
 
 
 @dataclass(frozen=True)
@@ -45,7 +38,7 @@ def load_candles(path: Path) -> List[Candle]:
 
 
 def pips(x: float) -> float:
-    return x / PIP
+    return x / CFG.pip_size
 
 
 def main() -> None:
@@ -54,18 +47,23 @@ def main() -> None:
     day = latest.ts.date()
 
     today = [c for c in candles if c.ts.date() == day]
-    asia = [c for c in today if 0 <= c.ts.hour < ASIA_END]
-    entry_window = [c for c in today if c.ts.hour in ENTRY_HOURS]
+    asia = [c for c in today if CFG.asia_start_hour <= c.ts.hour < CFG.asia_end_hour]
+    entry_window = [c for c in today if c.ts.hour in CFG.entry_hours]
 
     print("=== Isaac Signal Scanner V1 ===")
+    print(f"Strategy: {CFG.name}")
     print(f"Latest candle UTC: {latest.ts.isoformat()}")
     print(f"Latest close: {latest.close}")
 
-    if latest.ts.strftime("%A") == "Friday":
+    if CFG.skip_friday and latest.ts.strftime("%A") == "Friday":
         print("SIGNAL: SKIP_FRIDAY")
         return
 
-    if latest.ts.hour not in ENTRY_HOURS:
+    if CFG.skip_december and latest.ts.month == 12:
+        print("SIGNAL: SKIP_DECEMBER")
+        return
+
+    if latest.ts.hour not in CFG.entry_hours:
         print("SIGNAL: OUTSIDE_WINDOW")
         return
 
@@ -81,18 +79,18 @@ def main() -> None:
     print(f"Asian low: {asia_low}")
     print(f"Asian range: {asia_range_pips:.2f} pips")
 
-    if not (MIN_RANGE_PIPS <= asia_range_pips <= MAX_RANGE_PIPS):
+    if not (CFG.min_asia_range_pips <= asia_range_pips <= CFG.max_asia_range_pips):
         print("SIGNAL: INVALID_ASIA_RANGE")
         return
 
-    long_entry = asia_high + BUFFER_PIPS * PIP
-    short_entry = asia_low - BUFFER_PIPS * PIP
+    long_entry = asia_high + CFG.buffer_pips * CFG.pip_size
+    short_entry = asia_low - CFG.buffer_pips * CFG.pip_size
 
-    long_stop = asia_low - BUFFER_PIPS * PIP
-    short_stop = asia_high + BUFFER_PIPS * PIP
+    long_stop = asia_low - CFG.buffer_pips * CFG.pip_size
+    short_stop = asia_high + CFG.buffer_pips * CFG.pip_size
 
-    long_target = long_entry + TP_R * (long_entry - long_stop)
-    short_target = short_entry - TP_R * (short_stop - short_entry)
+    long_target = long_entry + CFG.target_r * (long_entry - long_stop)
+    short_target = short_entry - CFG.target_r * (short_stop - short_entry)
 
     triggered_long = any(c.high >= long_entry for c in entry_window)
     triggered_short = any(c.low <= short_entry for c in entry_window)

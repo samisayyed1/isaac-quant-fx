@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/home/sami/quant-fx"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="$ROOT/live_data/raw"
 CACHE_DIR="$ROOT/.dukascopy-cache"
 LIVE_FILE="$ROOT/live_data/eurusd-m15-live.csv"

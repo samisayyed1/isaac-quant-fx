@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
+from strategy_config_v1 import OPERATIONAL_STRATEGY as CFG
+
 LEDGER = Path("/home/sami/quant-fx/paper_trades.csv")
 
 FIELDS = [
@@ -24,8 +26,6 @@ FIELDS = [
     "net_pips",
     "notes",
 ]
-
-PIP = 0.0001
 
 
 def now_utc() -> str:
@@ -69,6 +69,12 @@ def next_trade_id(rows: List[Dict[str, str]]) -> str:
 
 
 def open_trade(args: argparse.Namespace) -> None:
+    if args.lot <= 0:
+        raise SystemExit("Lot size must be positive.")
+
+    if args.lot > CFG.max_paper_lot:
+        raise SystemExit(f"Paper lot capped at {CFG.max_paper_lot:.2f} by Isaac risk rule.")
+
     rows = read_trades()
 
     active = [r for r in rows if r["status"] == "OPEN"]
@@ -77,8 +83,8 @@ def open_trade(args: argparse.Namespace) -> None:
 
     trade = {
         "trade_id": next_trade_id(rows),
-        "strategy": "EURUSD_ASIA_BREAKOUT_V2",
-        "pair": "EUR/USD",
+        "strategy": CFG.name,
+        "pair": CFG.pair,
         "side": args.side.upper(),
         "status": "OPEN",
         "entry_time_utc": args.time or now_utc(),
@@ -111,9 +117,9 @@ def close_trade(args: argparse.Namespace) -> None:
     exit_price = args.exit
 
     if trade["side"] == "LONG":
-        net_pips = (exit_price - entry) / PIP
+        net_pips = (exit_price - entry) / CFG.pip_size
     elif trade["side"] == "SHORT":
-        net_pips = (entry - exit_price) / PIP
+        net_pips = (entry - exit_price) / CFG.pip_size
     else:
         raise SystemExit(f"Invalid side: {trade['side']}")
 

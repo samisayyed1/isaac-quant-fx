@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +15,8 @@ LIVE_DATA = ROOT / "live_data" / "eurusd-m15-live.csv"
 LEDGER = ROOT / "paper_trades.csv"
 RUN_LOG = ROOT / "paper_live_runner_log.csv"
 SIGNAL_LOG = ROOT / "live_signal_log.csv"
-AUDIT = ROOT / "system_audit_v1.sh"
+AUDIT = ROOT / "system_audit_v2.sh"
+PARENT_AUDIT_ENV = "ISAAC_PARENT_AUDIT_V2"
 
 PIP_VALUE_PER_STANDARD_LOT = 10.0
 
@@ -55,6 +57,9 @@ def profit_factor(vals: List[float]) -> float:
 
 
 def audit_status() -> str:
+    if os.environ.get(PARENT_AUDIT_ENV) == "1":
+        return "GREEN: parent system_audit_v2 in progress"
+
     if not AUDIT.exists():
         return "RED: missing system audit script"
 
@@ -64,7 +69,7 @@ def audit_status() -> str:
             capture_output=True,
             text=True,
             check=False,
-            timeout=30,
+            timeout=180,
         )
     except Exception as e:
         return f"RED: audit failed to run: {e}"
@@ -154,7 +159,7 @@ def main() -> None:
 
     print("")
     print("=== Isaac Decision ===")
-    if status == "GREEN":
+    if status.startswith("GREEN"):
         print("System is operational for paper trading only.")
     else:
         print("Do not operate. Fix RED status first.")

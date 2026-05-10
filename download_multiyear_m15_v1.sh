@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/home/sami/quant-fx"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="$ROOT/data/dukascopy_chunks"
 CACHE_DIR="$ROOT/.dukascopy-cache"
 

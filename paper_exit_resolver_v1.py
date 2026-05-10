@@ -6,11 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict
 
+from strategy_config_v1 import OPERATIONAL_STRATEGY as CFG
+
 DATA_PATH = Path("/home/sami/download/eurusd-m15-bid-2025-01-01-2026-01-01.csv")
 LEDGER = Path("/home/sami/quant-fx/paper_trades.csv")
-PIP = 0.0001
-ROUND_TRIP_COST_PIPS = 1.2
-EXIT_HOUR = 14
 
 FIELDS = [
     "trade_id", "strategy", "pair", "side", "status",
@@ -120,7 +119,7 @@ def main() -> None:
                 exit_time = c["ts"]
                 break
 
-            if c["ts"].hour >= EXIT_HOUR:
+            if c["ts"].hour >= CFG.exit_hour:
                 exit_price = c["close"]
                 exit_time = c["ts"]
                 reason = "TIME_EXIT"
@@ -131,14 +130,14 @@ def main() -> None:
             continue
 
         if side == "LONG":
-            net_pips = (exit_price - entry) / PIP
+            net_pips = (exit_price - entry) / CFG.pip_size
         else:
-            net_pips = (entry - exit_price) / PIP
+            net_pips = (entry - exit_price) / CFG.pip_size
 
         trade["status"] = "CLOSED"
         trade["exit_time_utc"] = exit_time.isoformat()
         trade["exit_price"] = f"{exit_price:.5f}"
-        trade["net_pips"] = f"{net_pips - ROUND_TRIP_COST_PIPS:.2f}"
+        trade["net_pips"] = f"{net_pips - CFG.round_trip_cost_pips:.2f}"
         trade["notes"] = (trade["notes"] + f" | exit_reason={reason}").strip(" |")
 
         print("CLOSED PAPER TRADE")
