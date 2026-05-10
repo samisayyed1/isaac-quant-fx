@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
 
+from strategy_config_v1 import OPERATIONAL_STRATEGY as CFG
+
 ROOT = Path("/home/sami/quant-fx")
 MEMORY_DIR = ROOT / "memory"
 EVENTS = MEMORY_DIR / "events.jsonl"
@@ -101,7 +103,7 @@ def build_snapshot() -> dict[str, Any]:
         "created_at_utc": now(),
         "system": "isaac-quant-fx",
         "audit_status": audit_status(),
-        "strategy": "EURUSD_ASIA_BREAKOUT_V2",
+        "strategy": CFG.name,
         "mode": "PAPER_ONLY",
         "latest_runner_action": runner[-1] if runner else None,
         "latest_signal_action": signal[-1] if signal else None,

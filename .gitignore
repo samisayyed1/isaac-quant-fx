@@ -11,3 +11,4 @@ histdata_files/
 *.csv
 memory/
 runtime_logs/
+agent_outputs/
