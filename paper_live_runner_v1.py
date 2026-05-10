@@ -203,6 +203,9 @@ def evaluate_signal(candles: List[Candle]) -> Signal:
     if latest.ts.strftime("%A") == "Friday":
         return Signal("SKIP_FRIDAY")
 
+    if latest.ts.month == 12:
+        return Signal("SKIP_DECEMBER")
+
     if latest.ts.hour not in ENTRY_HOURS:
         return Signal("OUTSIDE_WINDOW")
 

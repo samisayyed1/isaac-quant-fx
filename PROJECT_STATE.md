@@ -75,3 +75,18 @@ Risk Planning:
 - Paper size: 0.01-0.05 lots
 - No live deployment before 3 months paper validation
 - AI may analyze and propose improvements, but must not auto-change live trading logic
+
+Operational Paper Candidate V3:
+- Same as V2, plus skip all December trades
+- Trades: 594
+- Total net pips: 4186.50
+- Average pips/trade: 7.05
+- Win rate: 56.57%
+- Profit factor: 1.94
+- Max drawdown: -188.00
+- 3.0 pip cost: +3117.30 pips, PF 1.63
+- Monte Carlo 0.1% worst DD: -409.20 pips
+
+Current operating rule:
+- Use V3 for paper trading
+- Keep V2 as historical baseline
