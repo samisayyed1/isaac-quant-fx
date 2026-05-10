@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.duckdb
+.env
+.env.*
+*.log
+histdata_files/
+.dukascopy-cache/
+*.csv
