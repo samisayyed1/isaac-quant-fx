@@ -28,7 +28,7 @@ LOG_FILE="$LOG_DIR/paper_run_$STAMP.log"
 
   cd "$ROOT"
 
-  python3 paper_live_runner_v1.py --lot 0.01
+  python3 paper_live_runner_v2.py --lot 0.01
   python3 daily_report_v1.py
 
   echo "DONE"
