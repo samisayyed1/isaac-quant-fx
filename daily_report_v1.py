@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
+from strategy_config_v1 import OPERATIONAL_STRATEGY as CFG
+
 ROOT = Path("/home/sami/quant-fx")
 
 LIVE_DATA = ROOT / "live_data" / "eurusd-m15-live.csv"
@@ -76,6 +78,8 @@ def audit_status() -> str:
 def main() -> None:
     print("=== Isaac Daily Quant-FX Report V1 ===")
     print(f"Generated UTC: {datetime.now(timezone.utc).isoformat()}")
+    print(f"Active strategy: {CFG.name}")
+    print(f"Mode: PAPER_ONLY")
     print("")
 
     status = audit_status()
