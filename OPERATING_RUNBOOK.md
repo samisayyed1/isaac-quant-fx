@@ -47,6 +47,24 @@ python3 daily_report_v1.py
 python3 weekly_paper_evidence_report_v1.py
 ```
 
+## Research Labs
+
+Robustness Lab:
+
+- Checks whether V3 is surrounded by stable alternatives.
+- Checks whether V3 may be overfit.
+- May suggest research review.
+
+Scientific FX Regime Lab:
+
+- Checks whether V3 performance depends on volatility, compression, weekday, month, side, or exit regime.
+- May suggest research review.
+
+Current rule:
+
+- Research labs may suggest review, but they cannot authorize strategy changes.
+- Strategy changes require separate human approval and fresh validation.
+
 ## Expected Outside-Window Result
 
 When the latest candle is outside the active entry window, the expected result is:

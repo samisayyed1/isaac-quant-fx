@@ -19,6 +19,10 @@ LOG_FILE="$LOG_DIR/operating_review_$STAMP.log"
   ./ai_research_loop_v1.sh
   python3 weekly_paper_evidence_report_v1.py
   python3 paper_vs_backtest_comparison_v1.py
+  python3 robustness_lab_v1.py
+  python3 robustness_lab_summary_v1.py
+  python3 scientific_fx_regime_lab_v1.py
+  python3 scientific_fx_regime_summary_v1.py
   python3 deployment_gate_checklist_v1.py
 
   echo "OPERATING REVIEW STATUS: GREEN"
